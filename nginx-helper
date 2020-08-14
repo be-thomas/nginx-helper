@@ -1,0 +1,289 @@
+#!/usr/bin/python3
+
+import sys, os
+
+
+def get_defined_args(args):
+    i, end, dargs, rem = 0, len(args), {}, []
+    while i<end:
+        if args[i][0] == "-" and (i+1)<end:
+            dargs[args[i]] = args[i+1]
+            i+=1
+        else:
+            rem.append(args[i])
+        i+=1
+    return dargs, rem
+
+
+def parse_boolean(a, default_true=True):
+    if default_true and a=="":
+        return True
+    if a=="y" or a=='Y':
+        return True
+    elif a=="n" or a=="N":
+        return False
+    else:
+        return None
+
+
+def new_site(args):
+    print("Creating new site")
+    config, a = {}, None
+    if len(args) > 0:
+        config["server_name"] = args[0]
+        args = args[1:]
+    else:
+        config["server_name"] = input("Enter server name(domain): ")
+    print("Server name: " + config["server_name"])
+
+    dargs, rem = get_defined_args(args)
+    if "-ipv4" in dargs:
+        a = parse_boolean(dargs["-ipv4"])
+        if a is None:
+            print("Invalid input for ipv4")
+            sys.exit(0)
+        else:
+            config["ipv4"] = a
+    else:
+        config["ipv4"] = True
+
+    if "-port" in dargs:
+        config["port"] = dargs["-port"]
+    else:
+        config["port"] = "80"
+    
+    if "-filename" in dargs:
+        config["filename"] = dargs["-filename"]
+    else:
+        config["filename"] = config["server_name"]
+
+
+    if "-ipv6" in dargs:
+        a = parse_boolean(dargs["-ipv6"])
+        if a is None:
+            print("Invalid input for ipv6")
+            sys.exit(0)
+        else:
+            config["ipv6"] = a
+    else:
+        config["ipv6"] = True
+    if config["ipv4"] == config["ipv6"] and a == False:
+        print("Cannot disable both ipv4 and ipv6!")
+        sys.exit(0)
+    
+
+    if "-php" in dargs:
+        a = dargs["-php"]
+    else:
+        a = input("Do you want php(Leave empty if not needed, otherwise Enter version) ? ")
+    if a != "":
+        config["php"] = a
+    else:
+        config["php"] = False
+
+    index_files = "index.html,index.htm"
+    index_files += ",index.php" if  "php" in config else ""
+
+
+    if "-index" in dargs:
+        a = dargs["-index"]
+    else:
+        a = input("Are these index files OK '" + index_files + "' (Leave empty if Ok, else type new comma separated index files) ? ")
+    if a == "":
+        config["index"] = index_files
+    else:
+        config["index"] = a
+
+    if "-mode" in dargs:
+        a = dargs["-mode"]
+    else:
+        print("modes available -")
+        print("1) html+php? (php available only if enabled)")
+        print("2) proxy")
+        print("3) wordpress")
+        print("4) serve html+php? (php available only if enabled), fallback to proxy")
+        a = input("select mode(1-4) : ")
+    a = int(a)
+    if a not in [1, 2, 3, 4]:
+        print("Invalid input for mode")
+        sys.exit(0)
+    config["mode"] = a
+
+    final_config = setup_config(config)
+    print(final_config)
+
+    print("\n\n Writing to /etc/nginx/sites-available/" + config["filename"])
+    with open("/etc/nginx/sites-available/" + config["filename"], "w") as f:
+        f.write(final_config)
+
+
+def setup_config(config):
+    header = "server {\n\n"
+    body = ""
+    indent = "    "
+    footer = "}"
+
+    if config["ipv4"]:
+        body += indent + "listen " + config["port"] + ";\n"
+    if config["ipv6"]:
+        body += indent + "listen [::]:" + config["port"] + ";\n"
+    
+    body += indent + "server_name " + config["server_name"] + ";\n"
+    body += "\n"
+    body += indent + "index " + ' '.join(config["index"].split(",")) + ";\n"
+    body += "\n"
+
+    mode = config["mode"]
+    if mode == 1:
+        root_path = input("Enter public folder, from where to serve files(^ symbol will be replaced with server_name): ")
+        root_path = root_path.replace("^", config["server_name"])
+        body += indent + "root " + root_path + ";\n\n"
+        body += indent + "location / {\n"
+        body += indent + indent + "try_files $uri $uri/ =404;\n"
+        body += indent + "}"
+        body += "\n"
+
+        if config["php"]:
+            body += indent + "location ~ \\.php$ {\n"
+            body += indent + indent + "include snippets/fastcgi-php.conf;\n"
+            body += indent + indent + "fastcgi_pass unix:/run/php/php" + config["php"] + "-fpm.sock;\n"
+            body += indent + "}\n"
+            body += "\n"
+
+    elif mode == 2:
+        proxy_url = input("Enter the url to proxy: ")
+        body += indent + "location / {\n"
+        body += indent + indent + "include proxy_params;\n"
+        body += indent + indent + "proxy_pass " + proxy_url + ";\n"
+        body += indent + "}\n"
+        body += "\n"
+    elif mode == 3:
+        root_path = input("Enter wordpress installation directory(^ symbol will be replaced with server_name): ")
+        root_path = root_path.replace("^", config["server_name"])
+        body += indent + "root " + root_path + ";\n\n"
+        if config["php"]:
+            body += indent + "location / {\n"
+            body += indent + indent + "try_files $uri $uri/ /index.php?$args;\n"
+            body += indent + "}"
+            body += "\n"
+            body += indent + "location ~ \\.php$ {\n"
+            body += indent + indent + "include snippets/fastcgi-php.conf;\n"
+            body += indent + indent + "fastcgi_pass unix:/run/php/php" + config["php"] + "-fpm.sock;\n"
+            body += indent + "}\n"
+            body += "\n"
+        else:
+            print("Error!, PHP should be enabled for wordpress")
+            sys.exit(0)
+    elif mode == 4:
+        root_path = input("Enter public folder, from where to serve files(^ symbol will be replaced with server_name): ")
+        root_path = root_path.replace("^", config["server_name"])
+        proxy_url = input("Enter the url to proxy: ")
+        body += indent + "root " + root_path + ";\n\n"
+
+        body += indent + "location / {\n"
+        body += indent + indent + "try_files $uri $uri/ @proxy;\n"
+        body += indent + "}"
+        body += "\n"
+
+        if config["php"]:
+            body += indent + "location ~ \\.php$ {\n"
+            body += indent + indent + "include snippets/fastcgi-php.conf;\n"
+            body += indent + indent + "fastcgi_pass unix:/run/php/php" + config["php"] + "-fpm.sock;\n"
+            body += indent + "}\n"
+            body += "\n"
+        
+        body += indent + indent + "include proxy_params;\n"
+        body += indent + indent + "proxy_pass " + proxy_url + ";\n"
+        body += "}\n"
+        body += "\n"
+    
+    return header + body + footer
+
+
+def sites(args):
+    files = os.listdir("/etc/nginx/sites-available/")
+    files1 = os.listdir("/etc/nginx/sites-enabled/")
+    
+    print("Enabled: ")
+    print('    ' + '\n    '.join(files1))
+    print()
+    print("Disabled: ")
+    for file_name in files:
+        if file_name not in files1:
+            print('    ' + file_name)
+
+def enable_site(args):
+    files = os.listdir("/etc/nginx/sites-available/")
+    files1 = os.listdir("/etc/nginx/sites-enabled/")
+    disabled = []
+
+    print("Disabled Sites: ")
+    for file_name in files:
+        if file_name not in files1:
+            disabled.append(file_name)
+            print("    " + str(len(disabled)) + ") " + file_name)
+    a = int(input("Enter choice(number): "))
+    if a>=1 and a<=len(disabled):
+        file_name = disabled[a-1]
+        os.symlink('/etc/nginx/sites-available/' + file_name, '/etc/nginx/sites-enabled/' + file_name)
+        print("\n\nReloading Nginx...")
+        os.system("systemctl reload nginx")
+    else:
+        print("Invalid Input")
+
+def delete_site(args):
+    files = os.listdir("/etc/nginx/sites-available/")
+    files1 = os.listdir("/etc/nginx/sites-enabled/")
+    disabled = []
+
+    print("Disabled Sites: ")
+    for file_name in files:
+        if file_name not in files1:
+            disabled.append(file_name)
+            print("    " + str(len(disabled)) + ") " + file_name)
+    a = int(input("Enter choice(number): "))
+    if a>=1 and a<=len(disabled):
+        file_name = disabled[a-1]
+        os.remove('/etc/nginx/sites-available/' + file_name)
+    else:
+        print("Invalid Input")
+
+def disable_site(args):
+    files = os.listdir("/etc/nginx/sites-available/")
+    files1 = os.listdir("/etc/nginx/sites-enabled/")
+    enabled = []
+
+    print("Enabled Sites: ")
+    for file_name in files:
+        if file_name in files1:
+            enabled.append(file_name)
+            print('    ' + str(len(enabled)) + ") " + file_name)
+    a = int(input("Enter choice(number): "))
+    if a>=1 and a<=len(enabled):
+        file_name = enabled[a-1]
+        os.unlink('/etc/nginx/sites-enabled/' + file_name)
+        print("\n\nReloading Nginx...")
+        os.system("systemctl reload nginx")
+    else:
+        print("Invalid Input")
+
+if len(sys.argv) <= 1:
+    print("no arguments supplied")
+    print("    new [server_name] - to create a new server, you will be prompted for required info")
+    print("    sites - to display all enabled and disabled sites")
+    print("    enable - to enable a site. It will ask you to choose from the list of disabled sites")
+    print("    disable - to disable a site. It will ask you to choose from the list of enabled sites")
+    print("    delete - to delete a site. It will ask you to choose from the list of disabled sites")
+    sys.exit(0)
+
+args = sys.argv[1:]
+if args[0] == "new":
+    new_site(args[1:])
+elif args[0] == "sites":
+    sites(args[1:])
+elif args[0] == "enable":
+    enable_site(args[1:])
+elif args[0] == "disable":
+    disable_site(args[1:])
+elif args[0] == "delete":
+    delete_site(args[1:])
