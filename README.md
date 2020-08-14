@@ -3,15 +3,15 @@
 ## Dependencies
 Make sure you have python3, wget installed \
 On ubuntu, debian, kali you use this command to install \
-&nbsp;&nbsp;&nbsp;&nbsp; `sudo apt install python3 wget`
+&nbsp;&nbsp;&nbsp;&nbsp; `sudo apt install python3 wget` \
 On CentOS use - \
 &nbsp;&nbsp;&nbsp;&nbsp; `yum install python3 wget` \
 On Arch Linux use - \
 &nbsp;&nbsp;&nbsp;&nbsp; `pacman -S python3 wget` \
 
 ## Installation
-Run below commands in order -
-    `wget -O nginx-helper https://raw.githubusercontent.com/thomasb892/nginx-helper/master/nginx-helper
+Run below commands in order - \
+&nbsp;&nbsp;&nbsp;&nbsp; `wget -O nginx-helper https://raw.githubusercontent.com/thomasb892/nginx-helper/master/nginx-helper
     chmod +x nginx-helper
     sudo mv nginx-helper /usr/bin/nginx-helper`
 
