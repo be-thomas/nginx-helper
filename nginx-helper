@@ -82,7 +82,7 @@ def new_site(args):
         config["php"] = False
 
     index_files = "index.html,index.htm"
-    index_files += ",index.php" if  "php" in config else ""
+    index_files += ",index.php" if config["php"] else ""
 
 
     if "-index" in dargs:
