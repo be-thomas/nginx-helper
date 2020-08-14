@@ -13,7 +13,8 @@ On Arch Linux use - \
 Run below commands in order - \
 &nbsp;&nbsp;&nbsp;&nbsp; `wget -O nginx-helper https://raw.githubusercontent.com/thomasb892/nginx-helper/master/nginx-helper` \
 &nbsp;&nbsp;&nbsp;&nbsp; `chmod +x nginx-helper` \
-&nbsp;&nbsp;&nbsp;&nbsp; `sudo mv nginx-helper /usr/bin/nginx-helper` \
+&nbsp;&nbsp;&nbsp;&nbsp; `sudo mv nginx-helper /usr/bin/nginx-helper`
+\
 
 ## Usage
 After installation, you can start using 'nginx-helper' \
