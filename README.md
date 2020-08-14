@@ -3,11 +3,11 @@
 ## Dependencies
 Make sure you have python3, wget installed \
 On ubuntu, debian, kali you use this command to install \
-> `sudo apt install python3 wget`
+&nbsp;&nbsp;&nbsp;&nbsp; `sudo apt install python3 wget`
 On CentOS use - \
-> `yum install python3 wget` \
+&nbsp;&nbsp;&nbsp;&nbsp; `yum install python3 wget` \
 On Arch Linux use - \
-> `pacman -S python3 wget` \
+&nbsp;&nbsp;&nbsp;&nbsp; `pacman -S python3 wget` \
 
 ## Installation
 Run below commands in order -
