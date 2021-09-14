@@ -1,5 +1,9 @@
 # nginx-helper
 
+This is a command-line utility to easily manage nginx configuration.
+It is written to make my work of handling web servers easier.
+This script can customized according to one's tasks & preferences
+
 ## Dependencies
 Make sure you have python3, wget installed \
 On ubuntu, debian, kali you use this command to install \
